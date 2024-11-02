@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Text Summarizer</title>
+  </head>
+  <body>
+    <style>
+      .button {
+        font-size: 24px;
+      }
+    </style>
+    <h1>summa - text summarizer</h1>
+    <textarea
+      id="textInput"
+      rows="10"
+      cols="50"
+      placeholder="Enter the text to summarize"
+    >
+      Kolmogorov complexity, often referred to as algorithmic complexity, is a measure of the amount of information in a data string based on how compressible it is. Here's a simple explanation:
+      Definition: The Kolmogorov complexity of a string is defined as the length of the shortest possible program (in some fixed programming language) that outputs that string. Essentially, it measures how "complex" or "random" the string is.
+      Intuition: If you can compress a string significantly (like turning "aaaaa" into "5a"), it has low complexity because there's a simple rule to generate it. On the other hand, if the string is completely random (like a long sequence of random numbers), it has high complexity because no shorter program can generate it than the string itself.
+      Applications: Kolmogorov complexity is used in various fields, including information theory, computer science, and cryptography, to understand data compression, randomness, and the limits of computation.
+    </textarea>
+    <br />
+    <br />
+    <button class='button' onclick="sendSummarizeRequest()">Summarize</button>
+    <!-- <input
+      type="number"
+      id="wordLimit"
+      placeholder="Word limit (e.g., 50)"
+      min="1"
+    /> -->
+    <h2 id="whatsGoingOnPlace"></h2>
+    <div id="summaryOutput"></div>
+
+    <script>
+      const placeToRenderWhatsGoingOn = document.getElementById('whatsGoingOnPlace')
+      function renderWhatsGoingOn(thingToRender) {
+        placeToRenderWhatsGoingOn.innerHTML = thingToRender
+      }
+      function renderToSummary(text) {
+          document.getElementById("summaryOutput").textContent = text
+      }
+      async function sendSummarizeRequest() {
+        // Get the text and word limit from the input fields
+        const textToSummarize = document.getElementById("textInput").value;
+        // const wordLimit = document.getElementById("wordLimit").value || 50; // Default to 50 if not set
+        const wordLimit = 50 
+
+        // Check if text is provided
+        if (!textToSummarize) {
+          alert("Please enter text to summarize");
+          return;
+        }
+
+        let loaderDotsInterval
+        try {
+          let loaderDots = '...'
+          loaderDotsInterval = setInterval(()=> {
+            if (loaderDots === '...') {
+              loaderDots = '.'
+            } else if (loaderDots === '.') {
+              loaderDots = '..'
+            } else {
+              loaderDots = '...'
+            }
+            renderToSummary('')
+            renderWhatsGoingOn('Asked summa to do work, lets wait a little' + loaderDots)
+          }, 300)
+          const response = await fetch("http://127.0.0.1:5000/summarize", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Control-Allow-Origin": "*",
+            },
+            body: JSON.stringify({
+              text: textToSummarize,
+              word_limit: parseInt(wordLimit),
+            }),
+          });
+
+          const result = await response.json();
+
+          if (response.ok) {
+            renderWhatsGoingOn('Summary:')
+            renderToSummary(result.summary)
+          } else {
+            renderWhatsGoingOn('Error happen, here its:')
+            renderToSummary("Error: " + result.error)
+          }
+        } catch (error) {
+          renderWhatsGoingOn("Error sending the request")
+          console.error("Error sending the request:", error);
+        } finally {
+          clearInterval(loaderDotsInterval)
+        }
+      }
+    </script>
+  </body>
+</html>
