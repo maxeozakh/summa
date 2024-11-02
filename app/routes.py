@@ -1,24 +1,25 @@
-from flask import Blueprint, request, jsonify
-from .llama import run_llama
+from flask import Blueprint, request, jsonify, render_template
 import redis
 import hashlib
+from .llama import run_llama  # Ensure this is properly set up
 
-summarize = Blueprint('summarize', __name__)
+summarize = Blueprint('summarize', __name__, template_folder='../templates')
 
 redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
+@summarize.route('/')
+def home():
+    return render_template('index.html')
 
 def get_cache_key(prompt, word_limit):
-    # Generate a unique cache key based on input text and word limit
     prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
     return f"summary:{prompt_hash}:{word_limit}"
 
-@summarize.route('/summarize', methods=['POST', 'OPTIONS', 'GET'])
+@summarize.route('/summarize', methods=['POST'])
 def summarize_text():
-    # Handle preflight OPTIONS requests
     if request.method == 'OPTIONS':
         print("OPTIONS request received")
-        return '', 200
+        return "", 200
 
     try:
         data = request.get_json()
@@ -37,13 +38,11 @@ def summarize_text():
 
         # Run summarization if not cached
         summary = run_llama(text_to_summarize, word_limit)
-        
-        # Cache the result
-        
-        redis_client.set(cache_key, summary.strip(), ex=3600)  # Cache for 1 hour
 
-        print('summary: ', summary)
-        return jsonify({'summary': summary.strip()})
+        # Store result in cache
+        redis_client.set(cache_key, summary)
+
+        return jsonify({'summary': summary})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
