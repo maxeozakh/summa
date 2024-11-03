@@ -4,11 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Text Summarizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
   </head>
   <body>
     <style>
       .button {
         font-size: 24px;
+      }
+      #streamingOutput {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        min-height: 50px;
+        white-space: pre-wrap;
+      }
+      .hidden {
+        display: none;
       }
     </style>
     <h1>summa - text summarizer</h1>
@@ -25,50 +36,84 @@
     </textarea>
     <br />
     <br />
-    <button class='button' onclick="sendSummarizeRequest()">Summarize</button>
-    <!-- <input
-      type="number"
-      id="wordLimit"
-      placeholder="Word limit (e.g., 50)"
-      min="1"
-    /> -->
+    <button class="button" onclick="sendSummarizeRequest()">Summarize</button>
     <h2 id="whatsGoingOnPlace"></h2>
+    <div id="streamingOutput" class="hidden"></div>
     <div id="summaryOutput"></div>
 
     <script>
-      const placeToRenderWhatsGoingOn = document.getElementById('whatsGoingOnPlace')
-      function renderWhatsGoingOn(thingToRender) {
-        placeToRenderWhatsGoingOn.innerHTML = thingToRender
-      }
-      function renderToSummary(text) {
-          document.getElementById("summaryOutput").textContent = text
-      }
-      async function sendSummarizeRequest() {
-        // Get the text and word limit from the input fields
-        const textToSummarize = document.getElementById("textInput").value;
-        // const wordLimit = document.getElementById("wordLimit").value || 50; // Default to 50 if not set
-        const wordLimit = 500 
+      const socket = io();
+      let currentStreamingText = "";
 
-        // Check if text is provided
+      socket.on("connect", () => {
+        console.log("Connected to WebSocket");
+      });
+
+      socket.on("disconnect", () => {
+        console.log("Disconnected from WebSocket");
+      });
+
+      socket.on("llama_output", (data) => {
+        const streamingOutput = document.getElementById("streamingOutput");
+        currentStreamingText += data.data + " ";
+        streamingOutput.textContent = currentStreamingText;
+      });
+
+      socket.on("llama_complete", (data) => {
+        console.log("[SOCKET] Received completion event:", data);
+        renderWhatsGoingOn(
+          `Summary completed in ${data.elapsed_time.toFixed(2)} seconds`
+        );
+
+        const streamingOutput = document.getElementById("streamingOutput");
+        streamingOutput.style.borderColor = "#4CAF50";
+
+        if (window.loaderDotsInterval) {
+          clearInterval(window.loaderDotsInterval);
+        }
+      });
+
+      const placeToRenderWhatsGoingOn =
+        document.getElementById("whatsGoingOnPlace");
+      function renderWhatsGoingOn(thingToRender) {
+        placeToRenderWhatsGoingOn.innerHTML = thingToRender;
+      }
+
+      function renderToSummary(text) {
+        document.getElementById("summaryOutput").textContent = text;
+      }
+
+      async function sendSummarizeRequest() {
+        const textToSummarize = document.getElementById("textInput").value;
+        const wordLimit = 50;
+
         if (!textToSummarize) {
           alert("Please enter text to summarize");
           return;
         }
 
-        let loaderDotsInterval
+        currentStreamingText = "";
+        const streamingOutput = document.getElementById("streamingOutput");
+        streamingOutput.textContent = "";
+        streamingOutput.classList.remove("hidden");
+
+        let loaderDotsInterval;
         try {
-          let loaderDots = '...'
-          loaderDotsInterval = setInterval(()=> {
-            if (loaderDots === '...') {
-              loaderDots = '.'
-            } else if (loaderDots === '.') {
-              loaderDots = '..'
+          let loaderDots = "...";
+          loaderDotsInterval = setInterval(() => {
+            if (loaderDots === "...") {
+              loaderDots = ".";
+            } else if (loaderDots === ".") {
+              loaderDots = "..";
             } else {
-              loaderDots = '...'
+              loaderDots = "...";
             }
-            renderToSummary('')
-            renderWhatsGoingOn('Asked summa to do work, lets wait a little' + loaderDots)
-          }, 300)
+            renderToSummary("");
+            renderWhatsGoingOn(
+              "Asked summa to do work, lets wait a little" + loaderDots
+            );
+          }, 300);
+
           const response = await fetch("http://127.0.0.1:5000/summarize", {
             method: "POST",
             headers: {
@@ -84,18 +129,20 @@
           const result = await response.json();
 
           if (response.ok) {
-            renderWhatsGoingOn('Summary:')
-            renderToSummary(result.summary)
+            renderWhatsGoingOn("Summary:");
+            renderToSummary(result.summary);
           } else {
-            renderWhatsGoingOn('Error happen, here its:')
-            renderToSummary("Error: " + result.error)
+            renderWhatsGoingOn("Error happen, here its:");
+            renderToSummary("Error: " + result.error);
           }
         } catch (error) {
-          renderWhatsGoingOn("Error sending the request")
+          renderWhatsGoingOn("Error sending the request");
           console.error("Error sending the request:", error);
         } finally {
-          clearInterval(loaderDotsInterval)
+          clearInterval(loaderDotsInterval);
         }
+
+        window.loaderDotsInterval = loaderDotsInterval;
       }
     </script>
   </body>

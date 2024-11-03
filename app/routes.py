@@ -1,47 +1,43 @@
+from flask import Blueprint, request, jsonify, render_template
+from flask_socketio import emit
 import hashlib
 import redis
-from flask import Blueprint, request, jsonify, render_template
-from .llama import run_llama  # Ensure this is properly set up
+from .llama import run_llama
 
 summarize = Blueprint('summarize', __name__, template_folder='../templates')
-
 redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
+def init_socket_handlers(socketio):
+    @socketio.on('connect')
+    def handle_connect():
+        print("[SOCKET] Client connected")
 
-@summarize.route('/')
-def home():
-    return render_template('index.html')
-
-
-def get_cache_key(prompt, word_limit):
-    prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
-    return f"summary:{prompt_hash}:{word_limit}"
-
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        print("[SOCKET] Client disconnected")
 
 @summarize.route('/summarize', methods=['POST'])
 def summarize_text():
+    print("[ROUTE] Received summarize request")
     if request.method == 'OPTIONS':
-        print("OPTIONS request received")
         return "", 200
 
     try:
         data = request.get_json()
+        print(f"[ROUTE] Received data: {data}")
         text_to_summarize = data.get('text', '')
         word_limit = data.get('word_limit', 50)
+        print(f"[ROUTE] Text length: {len(text_to_summarize)}, Word limit: {word_limit}")
 
-        cache_key = get_cache_key(text_to_summarize, word_limit)
-        cached_summary = redis_client.get(cache_key)
-        if cached_summary:
-            print('Returning cached summary')
-            return jsonify({'summary': cached_summary.decode()})
-
-        # Run summarization if not cached
         summary = run_llama(text_to_summarize, word_limit)
-
-        # Store result in cache
-        redis_client.set(cache_key, summary)
-
+        print("[ROUTE] Summary generated successfully")
         return jsonify({'summary': summary})
 
     except Exception as e:
+        print(f"[ROUTE] Error occurred: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@summarize.route('/')
+def index():
+    print("[ROUTE] Serving index page")
+    return render_template('index.html')

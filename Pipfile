@@ -9,6 +9,8 @@ flask-cors = "*"
 redis = "*"
 pylint = "*"
 autopep8 = "*"
+flask-socketio = "*"
+python-dotenv = "*"
 
 [dev-packages]
 
