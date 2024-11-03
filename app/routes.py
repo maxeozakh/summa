@@ -7,13 +7,16 @@ summarize = Blueprint('summarize', __name__, template_folder='../templates')
 
 redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
+
 @summarize.route('/')
 def home():
     return render_template('index.html')
 
+
 def get_cache_key(prompt, word_limit):
     prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
     return f"summary:{prompt_hash}:{word_limit}"
+
 
 @summarize.route('/summarize', methods=['POST'])
 def summarize_text():

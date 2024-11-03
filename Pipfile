@@ -7,6 +7,8 @@ name = "pypi"
 flask = "*"
 flask-cors = "*"
 redis = "*"
+pylint = "*"
+autopep8 = "*"
 
 [dev-packages]
 
