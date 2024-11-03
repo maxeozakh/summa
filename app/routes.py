@@ -1,6 +1,6 @@
-from flask import Blueprint, request, jsonify, render_template
-import redis
 import hashlib
+import redis
+from flask import Blueprint, request, jsonify, render_template
 from .llama import run_llama  # Ensure this is properly set up
 
 summarize = Blueprint('summarize', __name__, template_folder='../templates')
@@ -29,10 +29,6 @@ def summarize_text():
         text_to_summarize = data.get('text', '')
         word_limit = data.get('word_limit', 50)
 
-        global summary_length
-        summary_length = word_limit
-
-        # Check cache
         cache_key = get_cache_key(text_to_summarize, word_limit)
         cached_summary = redis_client.get(cache_key)
         if cached_summary:

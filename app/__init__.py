@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_cors import CORS  # Import the CORS extension
+from app.routes import summarize
 
 
 def create_app():
@@ -9,7 +10,6 @@ def create_app():
     CORS(app, resources={r"/*": {"origins": "*"}})
 
     # Import routes
-    from app.routes import summarize
 
     # Register routes
     app.register_blueprint(summarize)
