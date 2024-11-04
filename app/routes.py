@@ -1,11 +1,10 @@
 from flask import Blueprint, request, jsonify, render_template
-from flask_socketio import emit
-import hashlib
 import redis
 from .llama import run_llama
 
 summarize = Blueprint('summarize', __name__, template_folder='../templates')
 redis_client = redis.Redis(host='localhost', port=6379, db=0)
+
 
 def init_socket_handlers(socketio):
     @socketio.on('connect')
@@ -15,6 +14,7 @@ def init_socket_handlers(socketio):
     @socketio.on('disconnect')
     def handle_disconnect():
         print("[SOCKET] Client disconnected")
+
 
 @summarize.route('/summarize', methods=['POST'])
 def summarize_text():
@@ -27,7 +27,8 @@ def summarize_text():
         print(f"[ROUTE] Received data: {data}")
         text_to_summarize = data.get('text', '')
         word_limit = data.get('word_limit', 50)
-        print(f"[ROUTE] Text length: {len(text_to_summarize)}, Word limit: {word_limit}")
+        print(f"[ROUTE] Text length: {
+              len(text_to_summarize)}, Word limit: {word_limit}")
 
         summary = run_llama(text_to_summarize, word_limit)
         print("[ROUTE] Summary generated successfully")
@@ -36,6 +37,7 @@ def summarize_text():
     except Exception as e:
         print(f"[ROUTE] Error occurred: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 @summarize.route('/')
 def index():
