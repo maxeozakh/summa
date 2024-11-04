@@ -27,8 +27,8 @@ def summarize_text():
         print(f"[ROUTE] Received data: {data}")
         text_to_summarize = data.get('text', '')
         word_limit = data.get('word_limit', 50)
-        print(f"[ROUTE] Text length: {
-              len(text_to_summarize)}, Word limit: {word_limit}")
+        text_len = len(text_to_summarize)
+        print(f"[ROUTE] Text length: {text_len}, Word limit: {word_limit}")
 
         summary = run_llama(text_to_summarize, word_limit)
         print("[ROUTE] Summary generated successfully")
