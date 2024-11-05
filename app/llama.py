@@ -23,7 +23,7 @@ def run_llama(prompt, summa_len=SUMMARY_LENGTH):
         '--prompt', f'Summarize the following text in {
             summa_len} words: {prompt}'
     ]
-    print(f"[LLAMA] Command: {' '.join(command)}")
+    # print(f"[LLAMA] Command: {' '.join(command)}")
 
     full_response = []
     process = None
@@ -41,6 +41,7 @@ def run_llama(prompt, summa_len=SUMMARY_LENGTH):
         socketio = current_app.extensions['socketio']
         print("[LLAMA] Got socketio instance")
 
+        socketio.emit('llama_started')
         while True:
             byte = process.stdout.read(1)  # Read one byte at a time
             if byte == b'':  # End of output
@@ -64,7 +65,6 @@ def run_llama(prompt, summa_len=SUMMARY_LENGTH):
             'total_tokens': len(full_response)
         })
 
-        # Add debug print after emission
         print("[LLAMA] Completion event emitted")
 
         result = ' '.join(full_response)

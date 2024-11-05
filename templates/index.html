@@ -66,6 +66,12 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
         console.log("Disconnected from WebSocket");
       });
 
+      socket.on("llama_started", (data) => {
+        const streamingOutput = document.getElementById("streamingOutput");
+        currentStreamingText = ''
+        streamingOutput.textContent = currentStreamingText;
+      });
+
       socket.on("llama_output", (data) => {
         const streamingOutput = document.getElementById("streamingOutput");
         currentStreamingText += data.data;

@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify, render_template
 import redis
 from .llama import run_llama
+from .queue import add_to_queue
+
 
 summarize = Blueprint('summarize', __name__, template_folder='../templates')
 redis_client = redis.Redis(host='localhost', port=6379, db=0)
@@ -24,15 +26,17 @@ def summarize_text():
 
     try:
         data = request.get_json()
-        print(f"[ROUTE] Received data: {data}")
         text_to_summarize = data.get('text', '')
         word_limit = data.get('word_limit', 50)
         text_len = len(text_to_summarize)
         print(f"[ROUTE] Text length: {text_len}, Word limit: {word_limit}")
 
-        summary = run_llama(text_to_summarize, word_limit)
-        print("[ROUTE] Summary generated successfully")
-        return jsonify({'summary': summary})
+        def task(text, limit):
+            summary = run_llama(text, limit)
+            print("[ROUTE] Summary generated successfully")
+
+        add_to_queue(lambda: task(text_to_summarize, word_limit))
+        return jsonify({'status': 'task added to the queue'})
 
     except Exception as e:
         print(f"[ROUTE] Error occurred: {str(e)}")
