@@ -1,13 +1,14 @@
 import subprocess
 import time
 from flask import current_app
+from app.session import user_connections
 
 PATH_TO_LLAMA = './llama.cpp/'
 MODEL_NAME = 'gemma-1.1-7b-it.Q4_K_M.gguf'
 SUMMARY_LENGTH = 500
 
 
-def run_llama(prompt, summa_len=SUMMARY_LENGTH):
+def run_llama(prompt, user_id, summa_len=SUMMARY_LENGTH):
     print("[LLAMA] Starting llama process")
     print(f"[LLAMA] Prompt length: {len(prompt)}")
 
@@ -23,7 +24,6 @@ def run_llama(prompt, summa_len=SUMMARY_LENGTH):
         '--prompt', f'Summarize the following text in {
             summa_len} words: {prompt}'
     ]
-    # print(f"[LLAMA] Command: {' '.join(command)}")
 
     full_response = []
     process = None
@@ -41,7 +41,7 @@ def run_llama(prompt, summa_len=SUMMARY_LENGTH):
         socketio = current_app.extensions['socketio']
         print("[LLAMA] Got socketio instance")
 
-        socketio.emit('llama_started')
+        socketio.emit('llama_started', room=user_connections[user_id])
         while True:
             byte = process.stdout.read(1)  # Read one byte at a time
             if byte == b'':  # End of output
@@ -51,7 +51,8 @@ def run_llama(prompt, summa_len=SUMMARY_LENGTH):
                 # utf-8 decoding, handle any errors as needed
                 character = byte.decode('utf-8')
                 full_response.append(character)
-                socketio.emit('llama_output', {'data': character})
+                socketio.emit('llama_output', {
+                              'data': character}, room=user_connections[user_id])
             except UnicodeDecodeError:
                 # Handle any decoding errors here, if necessary
                 print("[LLAMA] Skipping invalid byte in output")
@@ -63,7 +64,7 @@ def run_llama(prompt, summa_len=SUMMARY_LENGTH):
         socketio.emit('llama_complete', {
             'elapsed_time': elapsed_time,
             'total_tokens': len(full_response)
-        })
+        }, room=user_connections[user_id])
 
         print("[LLAMA] Completion event emitted")
 

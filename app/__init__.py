@@ -1,3 +1,4 @@
+import os
 from threading import Thread
 from flask import Flask
 from flask_cors import CORS
@@ -12,6 +13,8 @@ socketio = SocketIO(cors_allowed_origins="*")
 def create_app():
     print("[APP] Creating Flask application")
     app = Flask(__name__)
+    # TODO: good way to generate secret like that, on the go?
+    app.secret_key = os.urandom(32)
     CORS(app, resources={r"/*": {"origins": "*"}})
 
     worker = Thread(target=process_queue, args=(app,))
