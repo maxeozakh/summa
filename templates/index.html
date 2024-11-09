@@ -55,7 +55,7 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
     <div id="summaryOutput"></div>
 
     <script>
-      const tasksInProgress = new Set();
+      const tasksTodo = new Set();
       const socket = io();
       let inProgress = false;
       let currentStreamingText = "";
@@ -95,30 +95,40 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
       });
 
       socket.on('done_task_index', (data) => {
+        tasksTodo.delete(data.task_index);
         renderStateOfTheQueue({last: data.task_index, type: 'done'});
-        tasksInProgress.delete(data.task_index);
       });
 
       function renderStateOfTheQueue({last, type}) {
+        if (type === 'add') {
+          renderWhatsGoingOn(`Task added to queue`);
+          return
+        }
+
+        const sortedTasks = Array.from(tasksTodo).sort((a,b)=> a-b);
+        const firstTaskIndex = sortedTasks[0];
+
         console.log('queue', type)
+        console.log('remaining tasks', sortedTasks)
+        console.log('firstTaskIndex', firstTaskIndex)
+        console.log('lastlyDoneTaskIndex', last)
+
         if (inProgress) {
           return
         }
 
-        const sortedTasks = Array.from(tasksInProgress).sort((a,b)=> a-b);
-        const firstTaskIndex = sortedTasks[0];
-        console.log(sortedTasks)
-        console.log('firstTaskIndex', firstTaskIndex)
-        console.log('lastlyDoneTaskIndex', last)
-
+        if (sortedTasks.length === 0) {
+          renderWhatsGoingOn(`All tasks are done`);
+          return
+        }
         
-        const index = firstTaskIndex - last;
-        if (last === undefined) {
-          renderWhatsGoingOn(`Index in queue is ${firstTaskIndex}`)
-        } else if (index > 0) {
-          renderWhatsGoingOn(`Index in queue is ${firstTaskIndex - last}`)
+        const diffBetweenFirstTaskAndLastlyFinished = firstTaskIndex - last  - 1;
+
+
+        if (diffBetweenFirstTaskAndLastlyFinished > 0) {
+          renderWhatsGoingOn(`Index in queue is ${diffBetweenFirstTaskAndLastlyFinished}`)
         } else {
-          renderWhatsGoingOn(``)
+          renderWhatsGoingOn(`Cringe happened`)
         }
       }
 
@@ -177,7 +187,7 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
           const result = await response.json();
 
           if (response.ok) {
-            tasksInProgress.add(result.task_index);
+            tasksTodo.add(result.task_index);
             renderStateOfTheQueue({last: undefined, type: 'add'});
           } else {
             renderWhatsGoingOn("Error happen, here its:");
