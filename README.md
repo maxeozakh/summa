@@ -11,3 +11,13 @@ How to run:
    pipenv install
    flask run
   ```
+
+
+#### TODO
+
+* Reliable queue on the client
+* Setup llama via command
+* Speedup thing (deploy to the okay machine?)
+  * Docker
+* Improve summary readability
+* ?Arch

@@ -55,7 +55,9 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
     <div id="summaryOutput"></div>
 
     <script>
+      const tasksInProgress = new Set();
       const socket = io();
+      let inProgress = false;
       let currentStreamingText = "";
 
       socket.on("connect", () => {
@@ -67,9 +69,11 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
       });
 
       socket.on("llama_started", (data) => {
+        inProgress = true;
         const streamingOutput = document.getElementById("streamingOutput");
         currentStreamingText = ''
         streamingOutput.textContent = currentStreamingText;
+        renderWhatsGoingOn("Summarization started");
       });
 
       socket.on("llama_output", (data) => {
@@ -79,10 +83,8 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
       });
 
       socket.on("llama_complete", (data) => {
+        inProgress = false;
         console.log("[SOCKET] Received completion event:", data);
-        renderWhatsGoingOn(
-          `Summary completed in ${data.elapsed_time.toFixed(2)} seconds`
-        );
 
         const streamingOutput = document.getElementById("streamingOutput");
         streamingOutput.style.borderColor = "#4CAF50";
@@ -91,6 +93,34 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
           clearInterval(window.loaderDotsInterval);
         }
       });
+
+      socket.on('done_task_index', (data) => {
+        renderStateOfTheQueue({last: data.task_index, type: 'done'});
+        tasksInProgress.delete(data.task_index);
+      });
+
+      function renderStateOfTheQueue({last, type}) {
+        console.log('queue', type)
+        if (inProgress) {
+          return
+        }
+
+        const sortedTasks = Array.from(tasksInProgress).sort((a,b)=> a-b);
+        const firstTaskIndex = sortedTasks[0];
+        console.log(sortedTasks)
+        console.log('firstTaskIndex', firstTaskIndex)
+        console.log('lastlyDoneTaskIndex', last)
+
+        
+        const index = firstTaskIndex - last;
+        if (last === undefined) {
+          renderWhatsGoingOn(`Index in queue is ${firstTaskIndex}`)
+        } else if (index > 0) {
+          renderWhatsGoingOn(`Index in queue is ${firstTaskIndex - last}`)
+        } else {
+          renderWhatsGoingOn(``)
+        }
+      }
 
       const placeToRenderWhatsGoingOn =
         document.getElementById("whatsGoingOnPlace");
@@ -104,7 +134,7 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
 
       async function sendSummarizeRequest() {
         const textToSummarize = document.getElementById("textInput").value;
-        const wordLimit = 250;
+        const wordLimit = 5;
 
         if (!textToSummarize) {
           alert("Please enter text to summarize");
@@ -147,8 +177,8 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
           const result = await response.json();
 
           if (response.ok) {
-            // renderWhatsGoingOn("Summary:");
-            // renderToSummary(result.summary);
+            tasksInProgress.add(result.task_index);
+            renderStateOfTheQueue({last: undefined, type: 'add'});
           } else {
             renderWhatsGoingOn("Error happen, here its:");
             renderToSummary("Error: " + result.error);

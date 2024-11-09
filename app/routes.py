@@ -1,7 +1,7 @@
 import uuid
-from flask import Blueprint, request, jsonify, render_template, make_response
+from flask import Blueprint, request, jsonify, render_template, make_response, current_app
 from app.llama import run_llama
-from app.queue import add_to_queue
+from app.queue import add_to_queue, get_queue_size
 from app.session import user_connections
 
 summarize = Blueprint('summarize', __name__, template_folder='../templates')
@@ -34,6 +34,12 @@ def init_socket_handlers(socketio):
         print(f"[SOCKET] Client disconnected, removed user_id {user_id}")
 
 
+def summary_done_callback(task_index):
+    socketio = current_app.extensions['socketio']
+    socketio.emit('done_task_index', {'task_index': task_index})
+    print('[QUEUE]: task is DONE', '\n')
+
+
 @summarize.route('/summarize', methods=['POST'])
 def summarize_text():
     print("[ROUTE] Received summarize request")
@@ -49,15 +55,18 @@ def summarize_text():
         data = request.get_json()
         text_to_summarize = data.get('text', '')
         word_limit = data.get('word_limit', 50)
-        text_len = len(text_to_summarize)
-        print(f"[ROUTE] Text length: {text_len}, Word limit: {word_limit}")
+        # text_len = len(text_to_summarize)
+        # print(f"[ROUTE] Text length: {text_len}, Word limit: {word_limit}")
 
         def task(text, user_id, limit):
             summary = run_llama(text, user_id, limit)
             print("[ROUTE] Summary generated successfully", summary[:5], "...")
-
-        add_to_queue(lambda: task(text_to_summarize, user_id, word_limit))
-        return jsonify({'status': 'task added to the queue'})
+        task_index = get_queue_size() + 1
+        add_to_queue(lambda: task(text_to_summarize,
+                     user_id, word_limit),
+                     task_index,
+                     lambda: summary_done_callback(task_index))
+        return jsonify({'status': 'task added to the queue', 'task_index': task_index})
 
     except Exception as e:
         print(f"[ROUTE] Error occurred: {str(e)}", e)
