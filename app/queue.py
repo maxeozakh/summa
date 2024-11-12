@@ -38,13 +38,6 @@ def process_queue(app):
                 request_queue.task_done()
 
 
-def get_queued_and_active_tasks_amount():
-    global active_tasks
-    with task_lock:
-        qs = request_queue.qsize() + active_tasks
-        return qs
-
-
 def get_all_queued_tasks():
     """Returns a copy of all queued tasks for inspection."""
     return list(queue_inspector)  # Return a snapshot of all queued tasks
@@ -53,8 +46,6 @@ def get_all_queued_tasks():
 def get_last_queued_task_index():
     """Returns the last task in the queue without removing it."""
     if queue_inspector:
-        if (active_tasks > 0):
-            return queue_inspector[-1][0]
         return queue_inspector[-1][0]
 
     return 0  # No tasks if the list is empty

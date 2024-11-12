@@ -1,7 +1,7 @@
 import uuid
 from flask import Blueprint, request, jsonify, render_template, make_response, current_app
 from app.llama import run_llama
-from app.queue import add_to_queue, get_queued_and_active_tasks_amount, get_last_queued_task_index
+from app.queue import add_to_queue, get_last_queued_task_index
 from app.session import user_connections
 
 summarize = Blueprint('summarize', __name__, template_folder='../templates')
