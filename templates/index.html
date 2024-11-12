@@ -51,7 +51,7 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
     <br />
     <button class="button" onclick="sendSummarizeRequest()">Summarize</button>
     <h2 id="whatsGoingOnPlace"></h2>
-    <div id="streamingOutput" class="hidden"></div>
+    <div id="streamingOutput"></div>
     <div id="summaryOutput"></div>
 
     <script>
@@ -59,6 +59,7 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
       const socket = io();
       let inProgress = false;
       let currentStreamingText = "";
+      let lasDoneTaskIndex = 0;
 
       socket.on("connect", () => {
         console.log("Connected to WebSocket");
@@ -96,22 +97,20 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
 
       socket.on('done_task_index', (data) => {
         tasksTodo.delete(data.task_index);
-        renderStateOfTheQueue({last: data.task_index, type: 'done'});
+        renderStateOfTheQueue({index: data.task_index, type: 'done'});
       });
 
-      function renderStateOfTheQueue({last, type}) {
-        if (type === 'add') {
-          renderWhatsGoingOn(`Task added to queue`);
-          return
+      function renderStateOfTheQueue({index, type}) {
+        if (type === 'done') {
+          lasDoneTaskIndex = index;
         }
+
 
         const sortedTasks = Array.from(tasksTodo).sort((a,b)=> a-b);
         const firstTaskIndex = sortedTasks[0];
 
-        console.log('queue', type)
-        console.log('remaining tasks', sortedTasks)
-        console.log('firstTaskIndex', firstTaskIndex)
-        console.log('lastlyDoneTaskIndex', last)
+        console.log('queue in this client:', sortedTasks)
+        console.log(`${type} index:`, index)
 
         if (inProgress) {
           return
@@ -122,14 +121,15 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
           return
         }
         
-        const diffBetweenFirstTaskAndLastlyFinished = firstTaskIndex - last  - 1;
+        const diff = firstTaskIndex - index - 1;
+        const taskIndex = diff > 0 ? diff : 1;
 
-
-        if (diffBetweenFirstTaskAndLastlyFinished > 0) {
-          renderWhatsGoingOn(`Index in queue is ${diffBetweenFirstTaskAndLastlyFinished}`)
-        } else {
-          renderWhatsGoingOn(`Cringe happened`)
+        if (type === 'add') {
+          renderWhatsGoingOn(`Task added to queue`);
+          return
         }
+
+        renderWhatsGoingOn(`Index in queue is ${taskIndex}, tasks remaining: ${sortedTasks.length}`);
       }
 
       const placeToRenderWhatsGoingOn =
@@ -151,26 +151,22 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
           return;
         }
 
-        currentStreamingText = "";
-        const streamingOutput = document.getElementById("streamingOutput");
-        streamingOutput.classList.remove("hidden");
-
         let loaderDotsInterval;
         try {
-          let loaderDots = "...";
-          loaderDotsInterval = setInterval(() => {
-            if (loaderDots === "...") {
-              loaderDots = ".";
-            } else if (loaderDots === ".") {
-              loaderDots = "..";
-            } else {
-              loaderDots = "...";
-            }
-            renderToSummary("");
-            renderWhatsGoingOn(
-              "Asked summa to do work, lets wait a little" + loaderDots
-            );
-          }, 300);
+          // let loaderDots = "...";
+          // loaderDotsInterval = setInterval(() => {
+          //   if (loaderDots === "...") {
+          //     loaderDots = ".";
+          //   } else if (loaderDots === ".") {
+          //     loaderDots = "..";
+          //   } else {
+          //     loaderDots = "...";
+          //   }
+          //   renderToSummary("");
+          //   renderWhatsGoingOn(
+          //     "Asked summa to do work, lets wait a little" + loaderDots
+          //   );
+          // }, 300);
 
           const response = await fetch("http://127.0.0.1:5000/summarize", {
             method: "POST",
@@ -188,7 +184,7 @@ After his death, Nietzsche's sister Elisabeth became the curator and editor of h
 
           if (response.ok) {
             tasksTodo.add(result.task_index);
-            renderStateOfTheQueue({last: undefined, type: 'add'});
+            renderStateOfTheQueue({index: result.task_index, type: 'add'});
           } else {
             renderWhatsGoingOn("Error happen, here its:");
             renderToSummary("Error: " + result.error);

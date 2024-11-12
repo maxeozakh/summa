@@ -60,12 +60,10 @@ def summarize_text():
             summary = run_llama(text, user_id, limit)
             print("[ROUTE] Summary generated successfully", summary[:5], "...")
 
-        # Get task index based on both queued and active tasks
-
         current_task_index = 1
-
         last_queued_task_index = get_last_queued_task_index()
-        if (last_queued_task_index > 0):
+
+        if last_queued_task_index:
             current_task_index = last_queued_task_index + 1
 
         add_to_queue(
@@ -73,6 +71,7 @@ def summarize_text():
             lambda: task(text_to_summarize, user_id, word_limit),
             lambda: summary_done_callback(current_task_index)
         )
+
         return jsonify({'status': 'task added to the queue', 'task_index': current_task_index})
 
     except Exception as e:
