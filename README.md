@@ -28,7 +28,7 @@ flask run
 #### TODO
 
 - [x] Reliable queue on the client
-- [ ] Setup llama repo as a submodule (verify)
+- [x] Setup llama repo as a submodule
 - [ ] Speedup thing (deploy to the okayish machine?)
 - [ ] Docker
 - [ ] Improve summary readability
